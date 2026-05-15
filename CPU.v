@@ -49,7 +49,7 @@ wire[2:0] IorD;
 wire Wr;
 wire PcWriteCond;
 wire IRWrite;
-wire [2:0] RegDst;
+wire [1:0] RegDst;
 wire [3:0] MenToReg;
 wire RegWrite;
 wire AWrite;

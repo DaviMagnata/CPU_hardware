@@ -18,19 +18,29 @@ module UnidadeControle (
     output reg ALUOutWrite,
     output reg WriteMDR,
     output reg [1:0] RegDst,
-    output reg [2:0] MenToReg, 
+    output reg [3:0] MenToReg, 
     output reg RegWrite,
-    output reg MenWriteSrc, 
-    output reg PCWriteCond
+    output reg [1:0]MenWriteSrc, 
+    output reg PCWriteCond,
+    output reg [2:0]ShiftType,
+    output reg ShiftIN,
+    output reg [1:0]ShiftAmount
 );
 
-    typedef enum reg [4:0] {
+    typedef enum reg [5:0] {
         FETCH_1, FETCH_2, FETCH_3, 
         DECODE,
         LW_1, LW_2, LW_3, LW_4, LW_5,
         SW_1, SW_2, SW_3,
         BEQ_1,BEQ_2,BEQ_3,
         BNE_1,BNE_2,BNE_3,
+        LUI_1,LUI_2,LUI_3,
+        LB_1,LB_2,LB_3,LB_4,LB_5,
+        SRAM_1,SRAM_2,SRAM_3,SRAM_4,SRAM_5,SRAM_6,
+        ADDI_1,ADDI_2,ADDI_3,
+        SB_1,SB_2,SB_3,SB_4,SB_5,
+        J_1,
+        JAL_1,JAL_2
     } state_t;
 
     state_t state, next_state;
@@ -58,6 +68,13 @@ module UnidadeControle (
                     6'h2b:   next_state = SW_1; // Store Word
                     6'h4:   next_state = BEQ_1; // BEQ
                     6'h5:   next_state = BNE_1; // BNE
+                    6'hf:   next_state = LUI_1;
+                    6'b100000:  next_state = LB_1;
+                    6'h1:   next_state = SRAM_1;
+                    6'h8:   next_state = ADDI_1;
+                    6'b101000:  next_state = SB_1;
+                    6'h2:   next_state = J_1;
+                    6'h3:   next_state = JAL_1;
                     default: next_state = FETCH_1; // Se não implementado, reseta
                 endcase
             end
@@ -84,6 +101,46 @@ module UnidadeControle (
             BNE_2: next_state = BNE_3;
             BNE_3: next_state = FETCH_1;
 
+            // Caminho LUI (3 ciclos)
+            LUI_1: next_state = LUI_2;
+            LUI_2: next_state = LUI_3;
+            LUI_3: next_state = FETCH_1;
+
+            // Caminho LB (5 ciclos)
+            LB_1: next_state = LB_2;
+            LB_2: next_state = LB_3;
+            LB_3: next_state = LB_4;
+            LB_4: next_state = LB_5;
+            LB_5: next_state = FETCH_1;
+
+            // Caminho SRAM (6 ciclos)
+            SRAM_1:  next_state = SRAM_2;
+            SRAM_2: next_state = SRAM_3;
+            SRAM_3: next_state = SRAM_4;
+            SRAM_4: next_state = SRAM_5;
+            SRAM_5: next_state = SRAM_6;
+            SRAM_6: next_state = FETCH_1;
+
+            // Caminho ADDI (3 Ciclos)
+            ADDI_1: next_state = ADDI_2;
+            ADDI_2: next_state = ADDI_3;
+            ADDI_3: next_state = FETCH_1;
+
+            // Caminho SB (5 Ciclos)
+            SB_1: next_state = SB_2;
+            SB_2: next_state = SB_3;
+            SB_3: next_state = SB_4;
+            SB_4: next_state = SB_5;
+            SB_5: next_state = FETCH_1; 
+
+            // Caminho J (1 ciclo)
+            J_1: next_state = FETCH_1;
+
+            // Caminho JAL(2 ciclos)
+            JAL_1: next_state = JAL_2;
+            JAL_2: next_state = FETCH_1;
+        
+
             default: next_state = FETCH_1;
         endcase
     end
@@ -94,7 +151,8 @@ module UnidadeControle (
         IorD = 3'b000; Wr = 0; AluSrcA = 0; AluSrcB = 2'b00;
         AluOp = 3'b000; PcSource = 3'b000; PCWrite = 0; IRWrite = 0;
         AWrite = 0; BWrite = 0; ALUOutWrite = 0; WriteMDR = 0;
-        RegDst = 2'b00; MenToReg = 3'b000; RegWrite = 0; MenWriteSrc = 0; PCWriteCond=0;
+        RegDst = 2'b00; MenToReg = 4'b0000; RegWrite = 0; MenWriteSrc = 0; PCWriteCond=0;
+        ShiftType = 3'b000; ShiftIN = 1'b0; ShiftAmount = 2'b00;
 
         case (state)
             // --- FETCH ---
@@ -140,7 +198,7 @@ module UnidadeControle (
 
             LW_5: begin
                 RegDst = 2'b00;
-                MenToReg = 3'b000;
+                MenToReg = 4'b0000;
                 RegWrite = 1;
             end
 
@@ -206,6 +264,153 @@ module UnidadeControle (
                 PCWriteCond = 1;
                 PcSource = 3'b011;
             end
+
+            // --- LUI ---
+            LUI_1: begin 
+                ShiftType = 3'b001;
+            end
+
+            LUI_2: begin 
+                ShiftIN = 1;
+                ShiftAmount = 2'b01;
+                ShiftType = 3'b010;
+            end
+
+            LUI_3: begin 
+                MenToReg = 4'b0001;
+                RegWrite = 1;
+                RegDst = 2'b00;
+            end
+
+            // --- LB ---
+            LB_1:begin 
+                AWrite = 1;
+            end
+
+            LB_2: begin 
+                AluSrcA = 1;
+                AluSrcB = 2'b01;
+                AluOp = 3'b001;
+                ALUOutWrite = 1;
+            end
+
+            LB_3: begin 
+                Wr =0;
+                IorD = 3'b100;
+            end
+
+            LB_4: begin 
+                WriteMDR = 1;
+            end
+
+            LB_5: begin 
+                RegDst =2'b00;
+                MenToReg = 4'b0110;
+                RegWrite = 1;
+            end
+
+            // --- SRAM ---
+            SRAM_1: begin 
+                AWrite = 1;
+                BWrite = 1;
+            end
+
+            SRAM_2: begin 
+                AluSrcA = 1;
+                AluSrcB = 2'b01;
+                AluOp = 3'b001;
+                ALUOutWrite = 1;
+            end
+
+            SRAM_3: begin 
+                IorD = 3'b100;
+                Wr= 0;
+            end
+
+            SRAM_4: begin 
+                WriteMDR = 1;
+                ShiftType = 3'b001;
+            end
+
+            SRAM_5: begin 
+                ShiftIN = 0;
+                ShiftAmount= 2'b00;
+                ShiftType = 3'b100;
+            end
+
+            SRAM_6: begin 
+                MenToReg = 4'b0001;
+                RegWrite = 1;
+                RegDst = 2'b00;
+            end
+
+            // --- ADDI --- 
+            ADDI_1: begin 
+                AWrite = 1;
+            end
+            
+            ADDI_2: begin 
+                AluSrcA = 1;
+                AluSrcB = 2'b01;
+                AluOp = 3'b001;
+                ALUOutWrite = 1;
+            end
+
+            ADDI_3: begin 
+                RegDst = 2'b00;
+                MenToReg = 4'b0101;
+                RegWrite = 1;
+            end
+
+            // --- SB ---
+            
+            SB_1: begin 
+                AWrite = 1;
+                BWrite = 1;
+            end
+
+            SB_2: begin 
+                AluSrcA = 1;
+                AluSrcB = 2'b01;
+                AluOp = 3'b001;
+                ALUOutWrite = 1;
+            end
+
+            SB_3: begin 
+                Wr = 0;
+                IorD = 3'b100;
+            end
+
+            SB_4: begin 
+                WriteMDR = 1;
+            end
+
+            SB_5: begin 
+                Wr = 1;
+                IorD = 3'b100;
+                MenWriteSrc = 2'b11;
+            end
+
+            // --- J ---
+            J_1: begin 
+                PcWrite = 1;
+                PcSource = 3'b001;
+            end
+
+            // --- JAL ---
+            JAL_1: begin 
+                MenToReg = 4'b0111;
+                RegDst = 2'b01;
+                RegWrite = 1;
+            end
+
+            JAL_2: begin 
+                PCWrite = 1;
+                PCSource = 3'b001;
+            end
+
+
+            
 
         endcase
     end

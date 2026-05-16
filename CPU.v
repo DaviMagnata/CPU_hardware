@@ -348,4 +348,40 @@ mux_zero_alu mux_zero_alu(
     .data_output(mux_zero_alu_out)
 );
 
+unidade_c uc(
+    .clk(clk),
+    .rst(reset),
+    .Opcode(IR_31_26),
+    .Funct(IR_15_0[5:0]),
+    .overflow(Overflow_out),
+    .div_zero(div_zero_MD),
+    .ready(ready_MD),
+    .start(startMD),
+    .set_type(set_type_MD),
+    .Write_High(WriteHigh),
+    .Write_Low(WriteLow),
+    .WriteTR(Write_Temp_Reg),
+    .ShiftIN(ShiftIN),
+    .EPCWrite(WriteEPC),
+    .ShiftAmount(ShiftAmount),
+    .ShiftType(ShiftType),
+    .IorD(IorD),
+    .Wr(Wr),
+    .AluSrcA(ALUSrcA),
+    .AluSrcB(ALUSrcB),
+    .AluOp(ALUControl_out),
+    .PCSource(PCSource),
+    .PCWrite(WritePC),
+    .IRWrite(IRWrite),
+    .AWrite(AWrite),
+    .BWrite(BWrite),
+    .ALUOutWrite(ALUOutWrite),
+    .WriteMDR(WriteMDR),
+    .RegDst(RegDst),
+    .MenToReg(MenToReg),
+    .RegWrite(RegWrite),
+    .MenWriteSrc(MenWriteSrc),
+    .ErrorType(ErrorType),
+    .PCWriteCond(PcWriteCond)
+);
 endmodule

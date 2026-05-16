@@ -8,7 +8,7 @@ module UnidadeControle (
     input wire div_zero,
     input wire ready,   
     
-    // Sinais de Saída
+    // Sinais de SaÃ­da
     output reg start,          // Dispara o MultDiv
     output reg set_type,       // 1 para Mul, 0 para Div
     output reg Write_High,     // Escreve no registrador HI do Datapath
@@ -64,7 +64,7 @@ module UnidadeControle (
         J_1,
         JAL_1,JAL_2,
         EXCEPTION_OVERFLOW,EXCEPTION_ZERO,EXCEPTION_OPCODE,EXCEPTION_2,EXCEPTION_3,EXCEPTION_4, 
-        MUL_1, DIV_1, ESPERA_MD,
+        MUL_1, DIV_1, MUL_2, DIV_2, ESPERA_MD, SALVA_MD,
         WAIT_LW,WAIT_LB,WAIT_SRAM,WAIT_XCHG_1,WAIT_XCHG_2
     } state_t;
 
@@ -72,7 +72,7 @@ module UnidadeControle (
 
     reg [1:0] error_type_reg;
 
-    // --- 1. Lógica de Transição de Estado (Sequencial) ---
+    // --- 1. LÃ³gica de TransiÃ§Ã£o de Estado (Sequencial) ---
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             state <= FETCH_1;
@@ -87,7 +87,7 @@ module UnidadeControle (
         end
     end
 
-    // --- 2. Lógica do Próximo Estado (Combinacional) ---
+    // --- 2. LÃ³gica do PrÃ³ximo Estado (Combinacional) ---
     always @(*) begin
         case (state)
             // Ciclo de Busca (PC+4)
@@ -95,7 +95,7 @@ module UnidadeControle (
             FETCH_2: next_state = FETCH_3;
             FETCH_3: next_state = DECODE;
 
-            // Decodificação (Opcodes em Hexadecimal)
+            // DecodificaÃ§Ã£o (Opcodes em Hexadecimal)
             DECODE: begin
                 case (Opcode)
                     6'h23:   next_state = LW_1; // Load Word
@@ -110,11 +110,11 @@ module UnidadeControle (
                     6'h2:   next_state = J_1;
                     6'h3:   next_state = JAL_1;
                     6'h00: next_state = R_TYPE; // R-Type 
-                    default: next_state = EXCEPTION_OPCODE; // Se não implementado, reseta
+                    default: next_state = EXCEPTION_OPCODE; // Se nÃ£o implementado, reseta
                 endcase
             end
 
-            // Decodificação do Tipo R via Funct
+            // DecodificaÃ§Ã£o do Tipo R via Funct
             R_TYPE: begin
                 case (Funct)
                     6'h20: next_state = ADD_1; // ADD
@@ -129,21 +129,25 @@ module UnidadeControle (
                     6'h0: next_state = SLL_1; //SLL
                     6'h1a: next_state = DIV_1; //DIV
                     6'h18: next_state = MUL_1; //MUL   
-                    default: next_state = FETCH_1; // Se não implementado, reseta
+                    default: next_state = FETCH_1; // Se nÃ£o implementado, reseta
                 endcase
             end
 
-            MUL_1: next_state = ESPERA_MD;
-            DIV_1: next_state = ESPERA_MD;
+            MUL_1: next_state = MUL_2;
+            MUL_2: next_state = ESPERA_MD;
+            DIV_1: next_state = DIV_2;
+            DIV_2: next_state = ESPERA_MD;
 
             ESPERA_MD: begin
                 if (div_zero) 
-                    next_state = EXCEPTION_ZERO; // Se dividir por zero, dá erro imediatamente
+                    next_state = EXCEPTION_ZERO;
                 else if (ready) 
-                    next_state = FETCH_1;      // Terminou? Salva e volta pro início
+                    next_state = SALVA_MD;  // <-- estado dedicado para escrita
                 else  
-                    next_state = ESPERA_MD;    // Se busy=1 e ready=0, fica parado aqui esperando
+                    next_state = ESPERA_MD;
             end
+
+            SALVA_MD: next_state = FETCH_1;
             
             // Caminho SLT (2 ciclos)
             SLT_1: next_state = SLT_2; SLT_2: next_state = FETCH_1;
@@ -194,7 +198,7 @@ module UnidadeControle (
             J_1: next_state = FETCH_1;
             // Caminho JAL(2 ciclos)
             JAL_1: next_state = JAL_2; JAL_2: next_state = FETCH_1;
-            // Caminho Exceção
+            // Caminho ExceÃ§Ã£o
             EXCEPTION_OVERFLOW: next_state = EXCEPTION_2; 
             EXCEPTION_ZERO: next_state = EXCEPTION_2; 
             EXCEPTION_OPCODE: next_state = EXCEPTION_2; 
@@ -204,9 +208,9 @@ module UnidadeControle (
         endcase
     end
 
-    // --- 3. Lógica de Saída (Os sinais de controle das "bolinhas") ---
+    // --- 3. LÃ³gica de SaÃ­da (Os sinais de controle das "bolinhas") ---
     always @(*) begin
-        // Reset padrão de todos os sinais (Evita latches)
+        // Reset padrÃ£o de todos os sinais (Evita latches)
         IorD = 3'b000; Wr = 0; AluSrcA = 0; AluSrcB = 2'b00;
         AluOp = 3'b000; PCSource = 3'b000; PCWrite = 0; IRWrite = 0;
         AWrite = 0; BWrite = 0; ALUOutWrite = 0; WriteMDR = 0;
@@ -234,28 +238,33 @@ module UnidadeControle (
 
             end
 
-            // --- MULTIPLICAÇÃO ---
             MUL_1: begin
-                AWrite = 1;BWrite = 1;set_type = 1; start = 1;    
+                AWrite = 1; BWrite = 1; set_type = 1;  // carrega A e B, NÃO dispara start
             end
 
-            // --- DIVISÃO ---
+            MUL_2: begin
+                set_type = 1; start = 1;  // A e B já estão estáveis, dispara
+            end
+
             DIV_1: begin
-                AWrite = 1;BWrite = 1;set_type = 0; start = 1;    
+                AWrite = 1; BWrite = 1; set_type = 0;
+            end
+
+            DIV_2: begin
+                set_type = 0; start = 1;
             end
 
             ESPERA_MD: begin
-                // Mantém o set_type correto baseado na instrução atual
-                if (Opcode == 6'h00 && Funct == 6'h1a) begin // Código padrão do DIV
+                if (Opcode == 6'h00 && Funct == 6'h1a) begin 
                     set_type = 0;
                 end else begin
                     set_type = 1;
                 end
+            end
 
-                if (ready && !div_zero) begin
-                    Write_High = 1;
-                    Write_Low = 1;
-                end
+            SALVA_MD: begin
+                Write_High = 1;
+                Write_Low  = 1;
             end
 
 
@@ -321,7 +330,7 @@ module UnidadeControle (
 
             // --- LUI ---
             LUI_1: begin 
-                ShiftType = 3'b001;
+                ShiftType = 3'b001; ShiftIN = 1;
             end
 
             LUI_2: begin 
@@ -476,7 +485,7 @@ module UnidadeControle (
 
             // --- SRA ---
             SRA_1: begin
-                ShiftType = 3'b001; BWrite = 1;
+                ShiftType = 3'b001; BWrite = 1; 
             end
 
             SRA_2: begin
@@ -489,7 +498,7 @@ module UnidadeControle (
 
             // --- SLL ---
             SLL_1: begin
-                ShiftType = 3'b001; BWrite = 1;
+                ShiftType = 3'b001; BWrite = 1; 
             end
 
             SLL_2: begin

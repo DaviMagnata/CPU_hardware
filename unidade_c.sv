@@ -65,7 +65,7 @@ module UnidadeControle (
         JAL_1,JAL_2,
         EXCEPTION_OVERFLOW,EXCEPTION_ZERO,EXCEPTION_OPCODE,EXCEPTION_2,EXCEPTION_3,EXCEPTION_4, 
         MUL_1, DIV_1, ESPERA_MD,
-        WAIT_LW
+        WAIT_LW,WAIT_LB,WAIT_SRAM,WAIT_XCHG_1,WAIT_XCHG_2
     } state_t;
 
     state_t state, next_state;
@@ -152,7 +152,7 @@ module UnidadeControle (
             // Caminho SLL (3 ciclos)
             SLL_1: next_state = SLL_2;SLL_2: next_state = SLL_3;SLL_3: next_state = FETCH_1;
             // Caminho XCHG (5 ciclos)
-            XCHG_1: next_state = XCHG_2; XCHG_2: next_state = XCHG_3; XCHG_3: next_state = XCHG_4; XCHG_4: next_state = XCHG_5; XCHG_5: next_state = FETCH_1;
+            XCHG_1: next_state = XCHG_2; XCHG_2: next_state = WAIT_XCHG_1;WAIT_XCHG_1: next_state = XCHG_3;XCHG_3: next_state = WAIT_XCHG_2;WAIT_XCHG_2:next_state = XCHG_4; XCHG_4: next_state = XCHG_5; XCHG_5: next_state = FETCH_1;
             // Caminho MFLO (1 ciclo)
             MFLO_1: next_state = FETCH_1;
             // Caminho MFHI (1 ciclo)
@@ -180,9 +180,9 @@ module UnidadeControle (
             // Caminho LUI (3 ciclos)
             LUI_1: next_state = LUI_2;LUI_2: next_state = LUI_3;LUI_3: next_state = FETCH_1;
             // Caminho LB (5 ciclos)
-            LB_1: next_state = LB_2;LB_2: next_state = LB_3;LB_3: next_state = LB_4;LB_4: next_state = LB_5;LB_5: next_state = FETCH_1;
+            LB_1: next_state = LB_2;LB_2: next_state = LB_3;LB_3: next_state = WAIT_LB;WAIT_LB: next_state = LB_4;LB_4: next_state = LB_5;LB_5: next_state = FETCH_1;
             // Caminho SRAM (6 ciclos)
-            SRAM_1:  next_state = SRAM_2;SRAM_2: next_state = SRAM_3;SRAM_3: next_state = SRAM_4;
+            SRAM_1:  next_state = SRAM_2;SRAM_2: next_state = SRAM_3;SRAM_3: next_state = WAIT_SRAM;WAIT_SRAM:next_state = SRAM_4;
             SRAM_4: next_state = SRAM_5;SRAM_5: next_state = SRAM_6;SRAM_6: next_state = FETCH_1;
             // Caminho ADDI (3 Ciclos)
             ADDI_1: next_state = ADDI_2;
@@ -345,6 +345,10 @@ module UnidadeControle (
                 Wr =0;IorD = 3'b100;
             end
 
+            WAIT_LB: begin 
+
+            end
+
             LB_4: begin 
                 WriteMDR = 1;
             end
@@ -364,6 +368,10 @@ module UnidadeControle (
 
             SRAM_3: begin 
                 IorD = 3'b100;Wr= 0;
+            end
+
+            WAIT_SRAM: begin 
+
             end
 
             SRAM_4: begin 
@@ -524,8 +532,16 @@ module UnidadeControle (
                 IorD=3'b001; Wr = 0;
             end
 
+            WAIT_XCHG_1: begin 
+
+            end
+
             XCHG_3: begin
                 WriteMDR=1;IorD=3'b010; Wr = 0;
+            end
+
+            WAIT_XCHG_2: begin 
+                
             end
 
             XCHG_4: begin

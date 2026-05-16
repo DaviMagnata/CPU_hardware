@@ -31,7 +31,7 @@ wire[31:0] hi_out;
 wire[31:0] lo_out;
 wire[31:0] byte_logic_out;
 wire[31:0] mux_in_shift_out;
-wire[31:0] mux_N_shift_out;
+wire[4:0] mux_N_shift_out;
 wire[31:0] ShiftReg_out;
 wire[31:0] zero_extend_8_out;
 wire [5:0] IR_31_26; 
@@ -190,7 +190,7 @@ Registrador ALUOut(
     .Reset(reset),
     .Load(ALUOutWrite),
     .Entrada(ALU_out),
-    .Saida(ALUOut_out)
+    .Saida(ALUout_out)
 );
 
 Registrador EPC(
@@ -348,7 +348,7 @@ mux_zero_alu mux_zero_alu(
     .data_output(mux_zero_alu_out)
 );
 
-unidade_c uc(
+UnidadeControle uc(
     .clk(clk),
     .rst(reset),
     .Opcode(IR_31_26),

@@ -51,8 +51,8 @@ module UnidadeControle (
         SUB_1,SUB_2,SUB_3,
         XCHG_1,XCHG_2,XCHG_3,XCHG_4,XCHG_5,
         SLT_1,SLT_2,
-        SRA_1,SRA_2,SRA_3,
-        SLL_1,SLL_2,SLL_3,
+        SRA_1,SRA_2,SRA_3,SRA_4,
+        SLL_1,SLL_2,SLL_3,SLL_4,
         MFLO_1,
         MFHI_1,
         JR_1,JR_2,
@@ -152,9 +152,9 @@ module UnidadeControle (
             // Caminho SLT (2 ciclos)
             SLT_1: next_state = SLT_2; SLT_2: next_state = FETCH_1;
             // Caminho SRA (3 ciclos)
-            SRA_1: next_state = SRA_2;SRA_2: next_state = SRA_3;SRA_3: next_state = FETCH_1;
+            SRA_1: next_state = SRA_2;SRA_2: next_state = SRA_3;SRA_3: next_state = SRA_4;SRA_4: next_state = FETCH_1;
             // Caminho SLL (3 ciclos)
-            SLL_1: next_state = SLL_2;SLL_2: next_state = SLL_3;SLL_3: next_state = FETCH_1;
+            SLL_1: next_state = SLL_2;SLL_2: next_state = SLL_3;SLL_3: next_state = SLL_4;SLL_4: next_state = FETCH_1;
             // Caminho XCHG (5 ciclos)
             XCHG_1: next_state = XCHG_2; XCHG_2: next_state = WAIT_XCHG_1;WAIT_XCHG_1: next_state = XCHG_3;XCHG_3: next_state = WAIT_XCHG_2;WAIT_XCHG_2:next_state = XCHG_4; XCHG_4: next_state = XCHG_5; XCHG_5: next_state = FETCH_1;
             // Caminho MFLO (1 ciclo)
@@ -485,28 +485,44 @@ module UnidadeControle (
 
             // --- SRA ---
             SRA_1: begin
-                ShiftType = 3'b001; BWrite = 1; 
+                BWrite = 1;
+                ShiftType = 3'b000;  // idle
             end
 
             SRA_2: begin
-                ShiftIN=0; ShiftAmount=2'b10; ShiftType = 3'b100;
+                ShiftIN = 0;
+                ShiftType = 3'b001;  // load
             end
 
             SRA_3: begin
-                RegDst= 2'b10; MenToReg = 4'b0001; RegWrite = 1;
+                ShiftIN = 0;
+                ShiftAmount = 2'b10;
+                ShiftType = 3'b100;  // shift right aritmético
+            end
+
+            SRA_4: begin
+                RegDst = 2'b10; MenToReg = 4'b0001; RegWrite = 1;
             end
 
             // --- SLL ---
             SLL_1: begin
-                ShiftType = 3'b001; BWrite = 1; 
+                BWrite = 1;          
+                ShiftType = 3'b000;
             end
 
             SLL_2: begin
-                ShiftIN=0; ShiftAmount=2'b10; ShiftType = 3'b010;
+                ShiftIN = 0;        
+                ShiftType = 3'b001;  
             end
 
             SLL_3: begin
-                RegDst= 2'b10; MenToReg = 4'b0001; RegWrite = 1;
+                ShiftIN = 0;
+                ShiftAmount = 2'b10; 
+                ShiftType = 3'b010;  // shifta
+            end
+
+            SLL_4: begin
+                RegDst = 2'b10; MenToReg = 4'b0001; RegWrite = 1;
             end
 
             SLT_1: begin

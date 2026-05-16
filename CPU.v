@@ -278,7 +278,7 @@ mux_in_shift_reg shift_in_mux(
 
 mux_N_shift_reg shift_N_mux(
     .seletor(ShiftAmount),
-    .data_0(mem_data_reg_out),
+    .data_0(mem_data_reg_out[4:0]),
     .data_2(IR_15_0[10:6]),
     .data_output(mux_N_shift_out)
 );

@@ -64,7 +64,8 @@ module UnidadeControle (
         J_1,
         JAL_1,JAL_2,
         EXCEPTION_OVERFLOW,EXCEPTION_ZERO,EXCEPTION_OPCODE,EXCEPTION_2,EXCEPTION_3,EXCEPTION_4, 
-        MUL_1, DIV_1, ESPERA_MD
+        MUL_1, DIV_1, ESPERA_MD,
+        WAIT_LW
     } state_t;
 
     state_t state, next_state;
@@ -169,7 +170,7 @@ module UnidadeControle (
             ADD_2: next_state = (overflow) ? EXCEPTION_OVERFLOW : ADD_3;
             ADD_3: next_state = FETCH_1;
             // Caminho Load Word (5 ciclos)
-            LW_1: next_state = LW_2; LW_2: next_state = LW_3; LW_3: next_state = LW_4; LW_4: next_state = LW_5; LW_5: next_state = FETCH_1;
+            LW_1: next_state = LW_2; LW_2: next_state = LW_3; LW_3: next_state = WAIT_LW;WAIT_LW: next_state = LW_4; LW_4: next_state = LW_5; LW_5: next_state = FETCH_1;
             // Caminho Store Word (3 ciclos)
             SW_1: next_state = SW_2; SW_2: next_state = SW_3;SW_3: next_state = FETCH_1;
             // Caminho BEQ (3 ciclos)
@@ -269,6 +270,10 @@ module UnidadeControle (
                 Wr = 0; IorD = 3'b100; 
             end
 
+             WAIT_LW: begin 
+
+            end
+            
             LW_4: WriteMDR = 1;
 
             LW_5: begin

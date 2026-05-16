@@ -79,11 +79,20 @@ wire [2:0] ShiftType;
 wire [1:0] ShiftAmount;
 wire [1:0] MenWriteSrc;
 wire mux_zero_alu_out;
+wire pc_and_out;
+wire pc_or_out;
+
+assign pc_and_out = PcWriteCond & mux_zero_alu_out;
+assign pc_or_out = WritePC | pc_and_out;
+
+
+
+
 
 Registrador pc(
     .Clk(clk),
     .Reset(reset),
-    .Load(WritePC),
+    .Load(pc_or_out),
     .Entrada(mux_pc_out),
     .Saida(pc_out)
 );

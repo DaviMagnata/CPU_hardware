@@ -63,7 +63,7 @@ module UnidadeControle (
         SB_1,SB_2,SB_3,SB_4,SB_5,
         J_1,
         JAL_1,JAL_2,
-        EXCEPTION_OVERFLOW,EXCEPTION_ZERO,EXCEPTION_OPCODE,EXCEPTION_2,EXCEPTION_3,EXCEPTION_4, 
+        EXCEPTION_OVERFLOW,EXCEPTION_ZERO,EXCEPTION_OPCODE,EXCEPTION_2,EXCEPTION_3,EXCEPTION_4,EXCEPTION_WAIT, 
         MUL_1, DIV_1, MUL_2, DIV_2, ESPERA_MD, SALVA_MD,
         WAIT_LW,WAIT_LB,WAIT_SRAM,WAIT_XCHG_1,WAIT_XCHG_2
     } state_t;
@@ -178,9 +178,11 @@ module UnidadeControle (
             // Caminho Store Word (3 ciclos)
             SW_1: next_state = SW_2; SW_2: next_state = SW_3;SW_3: next_state = FETCH_1;
             // Caminho BEQ (3 ciclos)
-            BEQ_1: next_state = BEQ_2;BEQ_2: next_state = BEQ_3;BEQ_3: next_state = FETCH_1;
+            //BEQ_1: next_state = BEQ_2;BEQ_2: next_state = BEQ_3;BEQ_3: next_state = FETCH_1;
+            BEQ_1: next_state = BEQ_2;BEQ_2: next_state = FETCH_1;
             // Caminho BNE (3 ciclos)
-            BNE_1: next_state = BNE_2;BNE_2: next_state = BNE_3;BNE_3: next_state = FETCH_1;
+            //BNE_1: next_state = BNE_2;BNE_2: next_state = BNE_3;BNE_3: next_state = FETCH_1;
+            BNE_1: next_state = BNE_2;BNE_2: next_state = FETCH_1;
             // Caminho LUI (3 ciclos)
             LUI_1: next_state = LUI_2;LUI_2: next_state = LUI_3;LUI_3: next_state = FETCH_1;
             // Caminho LB (5 ciclos)
@@ -202,7 +204,8 @@ module UnidadeControle (
             EXCEPTION_OVERFLOW: next_state = EXCEPTION_2; 
             EXCEPTION_ZERO: next_state = EXCEPTION_2; 
             EXCEPTION_OPCODE: next_state = EXCEPTION_2; 
-            EXCEPTION_2: next_state = EXCEPTION_3; EXCEPTION_3: next_state = EXCEPTION_4;EXCEPTION_4: next_state = FETCH_1;
+            EXCEPTION_2: next_state = EXCEPTION_WAIT; 
+            EXCEPTION_WAIT: next_state = EXCEPTION_3; EXCEPTION_3: next_state = EXCEPTION_4;EXCEPTION_4: next_state = FETCH_1;
 
             default: next_state = FETCH_1;
         endcase
@@ -304,15 +307,14 @@ module UnidadeControle (
 
             // --- BEQ ---
             BEQ_1: begin
-                AWrite = 1;BWrite = 1;AluSrcA= 0;AluSrcB= 2'b10;AluOp  = 3'b001; ALUOutWrite = 1;
+                AWrite = 1;BWrite = 1;
+                AluSrcA= 0;AluSrcB= 2'b10;
+                AluOp  = 3'b001; ALUOutWrite = 1;
             end
 
             BEQ_2: begin
-                ALUOutWrite = 0;AluSrcA = 1;AluSrcB = 2'b00;AluOp = 3'b010;
-            end
-
-            BEQ_3: begin
-                PCWriteCond = 1;PCSource = 3'b011;
+                AluSrcA = 1; AluSrcB = 2'b00; AluOp = 3'b010;
+                PCWriteCond = 1; PCSource = 3'b011; // decide aqui, z_out ainda válido
             end
 
             // --- BNE ---
@@ -321,10 +323,7 @@ module UnidadeControle (
             end
 
             BNE_2: begin
-                ALUOutWrite = 0; AluSrcA = 1; AluSrcB = 2'b00; AluOp = 3'b010;
-            end
-
-            BNE_3: begin
+                AluSrcA = 1; AluSrcB = 2'b00; AluOp = 3'b010;
                 PCWriteCond = 1; PCSource = 3'b011;
             end
 
@@ -577,20 +576,33 @@ module UnidadeControle (
                 IorD=3'b010; Wr = 1;MenWriteSrc=2'b10;
             end
 
-            EXCEPTION_ZERO: begin
-                AluSrcA=0;AluSrcB=2'b01;AluOp=3'b010;EPCWrite=1;
-            end
-            
-            EXCEPTION_OPCODE: begin
-                AluSrcA=0;AluSrcB=2'b01;AluOp=3'b010;EPCWrite=1;
-            end
-            
             EXCEPTION_OVERFLOW: begin
-                AluSrcA=0;AluSrcB=2'b01;AluOp=3'b010;EPCWrite=1;
+                AluSrcA = 0;     
+                AluSrcB = 2'b11; 
+                AluOp = 3'b010;  
+                EPCWrite = 1;    
+            end
+
+            EXCEPTION_ZERO: begin
+                AluSrcA = 0;
+                AluSrcB = 2'b11;
+                AluOp = 3'b010;
+                EPCWrite = 1;
+            end
+
+            EXCEPTION_OPCODE: begin
+                AluSrcA = 0;
+                AluSrcB = 2'b11;
+                AluOp = 3'b010;
+                EPCWrite = 1;
             end
 
             EXCEPTION_2: begin
-                Wr=0;IorD=3'b011;ErrorType=error_type_reg;
+                Wr=0;IorD=3'b100;ErrorType=error_type_reg;
+            end
+
+            EXCEPTION_WAIT: begin 
+
             end
 
             EXCEPTION_3: begin
